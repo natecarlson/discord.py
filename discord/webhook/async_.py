@@ -222,7 +222,7 @@ class AsyncWebhookAdapter:
                             raise HTTPException(response, data)
 
                 except OSError as e:
-                    if attempt < 4 and e.errno in (54, 10054):
+                    if attempt < max_ratelimit_retries and e.errno in (54, 10054):
                         await asyncio.sleep(1 + attempt * 2)
                         continue
                     raise
@@ -230,6 +230,8 @@ class AsyncWebhookAdapter:
             if response:
                 if response.status >= 500:
                     raise DiscordServerError(response, data)
+                if response.status == 429:
+                    raise RuntimeError(f'Rate limited - hit max_ratelimit_retries of {max_ratelimit_retries}.')
                 raise HTTPException(response, data)
 
             raise RuntimeError('Unreachable code in HTTP handling.')
