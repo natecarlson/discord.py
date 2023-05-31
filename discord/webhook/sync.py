@@ -220,7 +220,7 @@ class WebhookAdapter:
                             raise HTTPException(response, data)
 
                 except OSError as e:
-                    if attempt < max_ratelimit_retries and e.errno in (54, 10054):
+                    if attempt < (max_ratelimit_retries - 1) and e.errno in (54, 10054):
                         time.sleep(min(1 + attempt * 2, 10))
                         continue
                     raise
