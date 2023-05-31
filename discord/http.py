@@ -557,6 +557,7 @@ class HTTPClient:
         *,
         files: Optional[Sequence[File]] = None,
         form: Optional[Iterable[Dict[str, Any]]] = None,
+        max_ratelimit_retries: int = 5,
         **kwargs: Any,
     ) -> Any:
         method = route.method
@@ -608,7 +609,7 @@ class HTTPClient:
         response: Optional[aiohttp.ClientResponse] = None
         data: Optional[Union[Dict[str, Any], str]] = None
         async with ratelimit:
-            for tries in range(5):
+            for tries in range(max_ratelimit_retries):
                 if files:
                     for f in files:
                         f.reset(seek=tries)

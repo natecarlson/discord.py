@@ -120,6 +120,7 @@ class WebhookAdapter:
         reason: Optional[str] = None,
         auth_token: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
+        max_ratelimit_retries: int = 5,
     ) -> Any:
         headers: Dict[str, str] = {}
         files = files or []
@@ -149,7 +150,7 @@ class WebhookAdapter:
         webhook_id = route.webhook_id
 
         with DeferredLock(lock) as lock:
-            for attempt in range(5):
+            for attempt in range(max_ratelimit_retries):
                 for file in files:
                     file.reset(seek=attempt)
 
@@ -288,12 +289,13 @@ class WebhookAdapter:
         files: Optional[Sequence[File]] = None,
         thread_id: Optional[int] = None,
         wait: bool = False,
+        max_ratelimit_retries: int = 5,
     ) -> MessagePayload:
         params = {'wait': int(wait)}
         if thread_id:
             params['thread_id'] = thread_id
         route = Route('POST', '/webhooks/{webhook_id}/{webhook_token}', webhook_id=webhook_id, webhook_token=token)
-        return self.request(route, session, payload=payload, multipart=multipart, files=files, params=params)
+        return self.request(route, session, payload=payload, multipart=multipart, files=files, params=params, max_ratelimit_retries=max_ratelimit_retries,)
 
     def get_webhook_message(
         self,
@@ -870,6 +872,7 @@ class SyncWebhook(BaseWebhook):
         wait: Literal[True],
         suppress_embeds: bool = MISSING,
         silent: bool = MISSING,
+        max_ratelimit_retries: bool = MISSING,
     ) -> SyncWebhookMessage:
         ...
 
@@ -891,6 +894,7 @@ class SyncWebhook(BaseWebhook):
         wait: Literal[False] = ...,
         suppress_embeds: bool = MISSING,
         silent: bool = MISSING,
+        max_ratelimit_retries: bool = MISSING,
     ) -> None:
         ...
 
@@ -911,6 +915,7 @@ class SyncWebhook(BaseWebhook):
         wait: bool = False,
         suppress_embeds: bool = False,
         silent: bool = False,
+        max_ratelimit_retries: int = 5,
     ) -> Optional[SyncWebhookMessage]:
         """Sends a message using the webhook.
 
@@ -975,6 +980,11 @@ class SyncWebhook(BaseWebhook):
             in the UI, but will not actually send a notification.
 
             .. versionadded:: 2.2
+
+        max_ratelimit_retries: :class:`int`
+            Override the hard limit on retries in case of rate limit. Defaults to the original default of 5.
+
+            .. versionadded:: 2.3
 
         Raises
         --------
@@ -1042,6 +1052,7 @@ class SyncWebhook(BaseWebhook):
                 files=params.files,
                 thread_id=thread_id,
                 wait=wait,
+                max_ratelimit_retries=max_ratelimit_retries,
             )
 
         if wait:

@@ -135,6 +135,7 @@ class AsyncWebhookAdapter:
         reason: Optional[str] = None,
         auth_token: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
+        max_ratelimit_retries: int = 5,
     ) -> Any:
         headers: Dict[str, str] = {}
         files = files or []
@@ -163,7 +164,7 @@ class AsyncWebhookAdapter:
         webhook_id = route.webhook_id
 
         async with AsyncDeferredLock(lock) as lock:
-            for attempt in range(5):
+            for attempt in range(max_ratelimit_retries):
                 for file in files:
                     file.reset(seek=attempt)
 
@@ -308,6 +309,7 @@ class AsyncWebhookAdapter:
         files: Optional[Sequence[File]] = None,
         thread_id: Optional[int] = None,
         wait: bool = False,
+        max_ratelimit_retries: int = 5,
     ) -> Response[Optional[MessagePayload]]:
         params = {'wait': int(wait)}
         if thread_id:
@@ -322,6 +324,7 @@ class AsyncWebhookAdapter:
             multipart=multipart,
             files=files,
             params=params,
+            max_ratelimit_retries=max_ratelimit_retries,
         )
 
     def get_webhook_message(
@@ -1594,6 +1597,7 @@ class Webhook(BaseWebhook):
         wait: Literal[True],
         suppress_embeds: bool = MISSING,
         silent: bool = MISSING,
+        max_ratelimit_retries: bool = MISSING,
     ) -> WebhookMessage:
         ...
 
@@ -1617,6 +1621,7 @@ class Webhook(BaseWebhook):
         wait: Literal[False] = ...,
         suppress_embeds: bool = MISSING,
         silent: bool = MISSING,
+        max_ratelimit_retries: bool = MISSING,
     ) -> None:
         ...
 
@@ -1639,6 +1644,7 @@ class Webhook(BaseWebhook):
         wait: bool = False,
         suppress_embeds: bool = False,
         silent: bool = False,
+        max_ratelimit_retries: int = 5,
     ) -> Optional[WebhookMessage]:
         """|coro|
 
@@ -1724,6 +1730,11 @@ class Webhook(BaseWebhook):
             in the UI, but will not actually send a notification.
 
             .. versionadded:: 2.2
+
+        max_ratelimit_retries: :class:`int`
+            Override the hard limit on retries in case of rate limit. Defaults to the original default of 5.
+
+            .. versionadded:: 2.3
 
         Raises
         --------
@@ -1813,6 +1824,7 @@ class Webhook(BaseWebhook):
                 files=params.files,
                 thread_id=thread_id,
                 wait=wait,
+                max_ratelimit_retries=max_ratelimit_retries,
             )
 
         msg = None
