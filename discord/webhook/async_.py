@@ -211,7 +211,7 @@ class AsyncWebhookAdapter:
                             continue
 
                         if response.status >= 500:
-                            await asyncio.sleep(1 + attempt * 2)
+                            await asyncio.sleep(min(1 + attempt * 2, 10))
                             continue
 
                         if response.status == 403:
@@ -223,7 +223,7 @@ class AsyncWebhookAdapter:
 
                 except OSError as e:
                     if attempt < max_ratelimit_retries and e.errno in (54, 10054):
-                        await asyncio.sleep(1 + attempt * 2)
+                        await asyncio.sleep(min(1 + attempt * 2, 10))
                         continue
                     raise
 
@@ -234,7 +234,7 @@ class AsyncWebhookAdapter:
                     raise RuntimeError(f'Rate limited - hit max_ratelimit_retries of {max_ratelimit_retries}.')
                 raise HTTPException(response, data)
 
-            raise RuntimeError('Unreachable code in HTTP handling.')
+            raise RuntimeError('Unreachable code in HTTP handling.', data)
 
     def delete_webhook(
         self,

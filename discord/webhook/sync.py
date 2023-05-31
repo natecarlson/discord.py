@@ -209,7 +209,7 @@ class WebhookAdapter:
                             continue
 
                         if response.status_code >= 500:
-                            time.sleep(1 + attempt * 2)
+                            time.sleep(min(1 + attempt * 2, 10))
                             continue
 
                         if response.status_code == 403:
@@ -221,7 +221,7 @@ class WebhookAdapter:
 
                 except OSError as e:
                     if attempt < max_ratelimit_retries and e.errno in (54, 10054):
-                        time.sleep(1 + attempt * 2)
+                        time.sleep(min(1 + attempt * 2, 10))
                         continue
                     raise
 
@@ -232,7 +232,7 @@ class WebhookAdapter:
                     raise RuntimeError(f'Rate limited - hit max_ratelimit_retries of {max_ratelimit_retries}.')
                 raise HTTPException(response, data)
 
-            raise RuntimeError('Unreachable code in HTTP handling.')
+            raise RuntimeError('Unreachable code in HTTP handling.', data)
 
     def delete_webhook(
         self,
